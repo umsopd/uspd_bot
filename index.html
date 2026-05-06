@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="pt-BR" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Um Só Propósito Digital - Área de Teste</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.2/firebase-auth-compat.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'DM Sans', sans-serif; }
+    .tab-active { background: #0f172a; color: #38bdf8; }
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .platform-whatsapp { border-left: 3px solid #25D366; }
+    .platform-instagram { border-left: 3px solid #E1306C; }
+    /* Ajuste para barra de rolagem do chat */
+    #chat-messages::-webkit-scrollbar { width: 4px; }
+    #chat-messages::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+  </style>
+ </head>
+ <body class="h-full bg-slate-950 text-slate-100 overflow-hidden">
+
+  <!-- TELA DE LOGIN -->
+  <div id="login-screen" class="fixed inset-0 z-[100] bg-slate-950 flex items-center justify-center p-6">
+    <div class="bg-slate-900 border border-slate-800 p-8 rounded-2xl max-w-sm w-full text-center fade-in">
+        <div class="w-16 h-16 bg-sky-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+            <i data-lucide="lock" class="text-white w-8 h-8"></i>
+        </div>
+        <h2 class="text-2xl font-bold mb-2">Área de Acesso</h2>
+        <p class="text-slate-400 text-sm mb-6">Digite a senha para acessar o ambiente de teste.</p>
+        <input id="login-pass" type="password" placeholder="Senha de acesso" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 mb-4 text-center focus:border-sky-500 outline-none">
+        <button onclick="checkLogin()" class="w-full bg-sky-500 hover:bg-sky-600 text-white font-bold py-3 rounded-lg transition-all">Entrar</button>
+        <p id="login-error" class="text-red-400 text-xs mt-4 hidden">Senha incorreta. Tente novamente.</p>
+    </div>
+  </div>
+
+  <!-- CONTEÚDO DO APP -->
+  <div id="app-content" class="hidden h-full w-full flex flex-col">
+   <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex items-center justify-between shrink-0">
+    <div class="flex items-center gap-3">
+     <div class="w-9 h-9 rounded-lg bg-sky-500 flex items-center justify-center"><i data-lucide="bot" class="w-5 h-5 text-white"></i></div>
+     <div>
+      <h1 class="text-lg font-bold text-white">AutoBot - Área de Teste</h1>
+      <p class="text-xs text-slate-400">Um Só Propósito Digital</p>
+     </div>
+    </div>
+    <div id="admin-stats" class="hidden flex items-center gap-2 text-xs text-slate-500">
+        <span id="stats-clients-header">0 clientes</span> <span>•</span> <span id="stats-flows-header">0 fluxos</span>
+    </div>
+   </header>
+
+   <nav id="main-nav" class="bg-slate-900 border-b border-slate-800 px-6 py-2 flex gap-2 shrink-0 overflow-x-auto"></nav>
+
+   <main class="flex-1 overflow-auto p-6">
+    <!-- VIEW CLIENTES -->
+    <div id="view-clients" class="hidden fade-in">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold">Seus Clientes</h2>
+            <button onclick="showClientForm()" class="bg-sky-500 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Novo Cliente</button>
+        </div>
+        <div id="client-form-container" class="hidden mb-6">
+            <div class="bg-slate-900 border border-slate-700 p-5 rounded-xl">
+                <form onsubmit="saveClient(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="block text-sm text-slate-400 mb-1">Nome</label><input id="client-name" type="text" required class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white"></div>
+                    <div><label class="block text-sm text-slate-400 mb-1">Plataforma</label><select id="client-platform" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white"><option value="whatsapp">WhatsApp</option><option value="instagram">Instagram</option></select></div>
+                    <div class="md:col-span-2 flex gap-2"><button type="submit" class="bg-sky-500 px-4 py-2 rounded-lg text-sm">Salvar</button><button type="button" onclick="hideClientForm()" class="bg-slate-700 px-4 py-2 rounded-lg text-sm">Cancelar</button></div>
+                </form>
+            </div>
+        </div>
+        <div id="clients-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+
+    <!-- VIEW AUTOMAÇÕES -->
+    <div id="view-flows" class="hidden fade-in">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-xl font-bold">Automações</h2>
+            <button onclick="showFlowForm()" class="bg-sky-500 text-white px-4 py-2 rounded-lg text-sm flex items-center gap-2"><i data-lucide="plus" class="w-4 h-4"></i>Nova Automação</button>
+        </div>
+        <div id="flow-form-container" class="hidden mb-6">
+            <div class="bg-slate-900 border border-slate-700 p-5 rounded-xl">
+                <form onsubmit="saveFlow(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="block text-sm text-slate-400 mb-1">Nome</label><input id="flow-name" type="text" required class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white"></div>
+                    <div><label class="block text-sm text-slate-400 mb-1">Cliente</label><select id="flow-client" required class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white"></select></div>
+                    <div><label class="block text-sm text-slate-400 mb-1">Gatilho</label><input id="flow-trigger" type="text" required class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white"></div>
+                    <div><label class="block text-sm text-slate-400 mb-1">Plataforma</label><select id="flow-platform" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white"><option value="whatsapp">WhatsApp</option><option value="instagram">Instagram</option></select></div>
+                    <div class="md:col-span-2"><label class="block text-sm text-slate-400 mb-1">Resposta</label><textarea id="flow-response" required rows="3" class="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-white"></textarea></div>
+                    <div class="md:col-span-2 flex gap-2"><button type="submit" class="bg-sky-500 px-4 py-2 rounded-lg text-sm">Salvar</button><button type="button" onclick="hideFlowForm()" class="bg-slate-700 px-4 py-2 rounded-lg text-sm">Cancelar</button></div>
+                </form>
+            </div>
+        </div>
+        <div id="flows-list" class="space-y-3"></div>
+    </div>
+
+    <!-- VIEW TESTAR BOT (WHATSAPP STYLE) -->
+    <div id="view-preview" class="hidden fade-in">
+        <div class="max-w-md mx-auto h-full flex flex-col">
+            <div class="mb-4">
+                <h2 class="text-xl font-bold">Simulador de Chat</h2>
+                <p class="text-xs text-slate-400">Teste suas automações configuradas</p>
+            </div>
+            <select id="preview-client" class="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm mb-4 text-white outline-none focus:border-sky-500"></select>
+            
+            <div class="relative mx-auto border-slate-800 bg-slate-900 border-[8px] rounded-[2.5rem] h-[550px] w-full max-w-[320px] shadow-2xl flex flex-col overflow-hidden">
+                <div class="h-6 w-full bg-slate-900 flex justify-between px-6 pt-2 items-center text-slate-500"><span class="text-[10px] font-bold">9:41</span><div class="flex gap-1"><i data-lucide="signal" class="w-2 h-2"></i><i data-lucide="wifi" class="w-2 h-2"></i><i data-lucide="battery" class="w-2 h-2"></i></div></div>
+                <div class="bg-slate-800 p-3 flex items-center gap-2 border-b border-slate-700"><i data-lucide="chevron-left" class="w-4 h-4 text-sky-500"></i><div class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center"><i data-lucide="user" class="w-4 h-4 text-slate-400"></i></div><div class="leading-tight"><p class="text-[13px] font-bold">Bot Preview</p><p class="text-[10px] text-emerald-500">online</p></div></div>
+                <div id="chat-messages" class="flex-1 overflow-auto p-3 space-y-3 bg-[#0b141a] flex flex-col">
+                    <div class="self-center bg-slate-800/50 text-[10px] py-1 px-3 rounded-md text-slate-400 mb-2">Hoje</div>
+                </div>
+                <div class="p-2 bg-slate-900 flex gap-2 items-center">
+                    <div class="flex-1 bg-slate-800 rounded-full px-4 py-2 flex items-center gap-2"><i data-lucide="smile" class="w-4 h-4 text-slate-400"></i><input id="chat-input" type="text" placeholder="Mensagem" class="bg-transparent text-xs w-full outline-none text-white"><i data-lucide="paperclip" class="w-4 h-4 text-slate-400"></i></div>
+                    <button onclick="sendTestMessage()" class="bg-emerald-600 w-9 h-9 rounded-full flex items-center justify-center hover:bg-emerald-700 transition-colors"><i data-lucide="send" class="w-4 h-4 text-white"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OUTRAS VIEWS -->
+    <div id="view-templates" class="hidden fade-in"><h2 class="text-xl font-bold mb-6">Templates</h2><div id="templates-list" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div></div>
+    <div id="view-analytics" class="hidden fade-in"><h2 class="text-xl font-bold mb-6">Relatórios</h2><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div class="bg-slate-900 border border-slate-700 p-5 rounded-xl text-center"><p class="text-slate-400 text-xs uppercase mb-1">Clientes</p><p id="ana-total-clients" class="text-3xl font-bold text-sky-400">0</p></div><div class="bg-slate-900 border border-slate-700 p-5 rounded-xl text-center"><p class="text-slate-400 text-xs uppercase mb-1">Fluxos</p><p id="ana-total-flows" class="text-3xl font-bold text-sky-400">0</p></div></div></div>
+   </main>
+  </div>
+
+  <script>
+    const PASS_USER = "teste2026";
+    const PASS_ADMIN = "admin123";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyBFyBsYxFAfhkHX_KAe-9vFpJWm1S2okqM",
+      authDomain: "painel-um-so.firebaseapp.com",
+      databaseURL: "https://painel-um-so-default-rtdb.firebaseio.com",
+      projectId: "painel-um-so",
+      storageBucket: "painel-um-so.firebasestorage.app",
+      messagingSenderId: "710936866181",
+      appId: "1:710936866181:web:7907e107490cb0d36468ec"
+    };
+
+    let allData = [];
+    let userRole = 'none';
+
+    // FUNÇÕES DE LOGIN
+    function checkLogin() {
+        const pass = document.getElementById('login-pass').value;
+        const error = document.getElementById('login-error');
+        if(pass === PASS_ADMIN) { userRole = 'admin'; startApp(); }
+        else if(pass === PASS_USER) { userRole = 'user'; startApp(); }
+        else { error.classList.remove('hidden'); }
+    }
+
+    function startApp() {
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('app-content').classList.remove('hidden');
+        buildNavigation();
+        initFirebase();
+        if(userRole === 'user') switchTab('preview');
+        else switchTab('clients');
+    }
+
+    // GESTÃO DE TECLADO (ENTER)
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            if (document.activeElement.id === 'login-pass') {
+                checkLogin();
+            } else if (document.activeElement.id === 'chat-input') {
+                sendTestMessage();
+            }
+        }
+    });
+
+    // FUNÇÃO DE TESTE DO CHAT
+    function sendTestMessage() {
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        const clientId = document.getElementById('preview-client').value;
+        const chat = document.getElementById('chat-messages');
+        if (!text || !clientId) return;
+        const getTime = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        chat.innerHTML += `<div class="self-end max-w-[85%] bg-[#005c4b] text-white p-2 rounded-t-lg rounded-bl-lg shadow-sm fade-in relative mb-1"><p class="text-xs whitespace-pre-wrap pr-8">${esc(text)}</p><span class="text-[9px] text-slate-300 absolute bottom-1 right-2">${getTime()}</span></div>`;
+        const flow = allData.find(f => f.type === 'flow' && f.flow_client_id === clientId && f.flow_trigger.toLowerCase().split(',').map(i => i.trim()).includes(text.toLowerCase()));
+        const typingId = 'typing-' + Date.now();
+        setTimeout(() => { chat.innerHTML += `<div id="${typingId}" class="self-start text-[10px] text-slate-400 italic ml-2">digitando...</div>`; chat.scrollTop = chat.scrollHeight; }, 400);
+setTimeout(() => {
+    const typingEl = document.getElementById(typingId); 
+    if(typingEl) typingEl.remove();
+
+    // Lógica de Resposta com Fallback
+    let reply;
+    if (flow) {
+        reply = flow.flow_response;
+    } else {
+        // Mensagem personalizada quando não identifica o gatilho
+        reply = "Olá! Esse é um ambiente de testes e ainda estou aprendendo sobre isso! 🧠\n\nPor favor, escolha uma das opções do menu principal ou tente outra palavra-chave.";
+        
+    }
+
+    chat.innerHTML += `
+        <div class="self-start max-w-[85%] bg-[#202c33] text-white p-2 rounded-t-lg rounded-br-lg shadow-sm fade-in relative mb-1 border-l-2 border-emerald-500">
+            <p class="text-xs whitespace-pre-wrap pr-8">${esc(reply)}</p>
+            <span class="text-[9px] text-slate-400 absolute bottom-1 right-2">${getTime()}</span>
+        </div>
+    `;
+    chat.scrollTop = chat.scrollHeight; 
+    lucide.createIcons();
+}, 1200);
+        input.value = '';
+        chat.scrollTop = chat.scrollHeight;
+    }
+
+    // LÓGICA CORE
+    async function initFirebase() {
+      try {
+        firebase.initializeApp(firebaseConfig);
+        await firebase.auth().signInAnonymously();
+        firebase.database().ref('shared_data').on('value', (snap) => {
+          const val = snap.val() || {};
+          allData = Object.keys(val).map(key => ({ ...val[key], __backendId: key }));
+          renderAll();
+        });
+      } catch (err) { console.error(err); }
+    }
+
+    function renderAll() {
+      const clients = allData.filter(d => d.type === 'client');
+      const flows = allData.filter(d => d.type === 'flow');
+      if(userRole === 'admin') {
+          document.getElementById('stats-clients-header').textContent = `${clients.length} clientes`;
+          document.getElementById('stats-flows-header').textContent = `${flows.length} fluxos`;
+          document.getElementById('ana-total-clients').textContent = clients.length;
+          document.getElementById('ana-total-flows').textContent = flows.length;
+          renderClients(clients);
+          renderFlows(flows, clients);
+      }
+      updateSelects(clients);
+    }
+
+    function renderClients(clients) {
+      const list = document.getElementById('clients-list');
+      if(!list) return;
+      list.innerHTML = clients.map(c => `<div class="bg-slate-900 border border-slate-800 rounded-xl p-4 platform-${c.client_platform}"><div class="flex justify-between items-center"><div><h3 class="font-bold">${esc(c.client_name)}</h3><p class="text-xs text-slate-500 uppercase">${c.client_platform}</p></div><button onclick="deleteFromFirebase('${c.__backendId}')" class="text-slate-600 hover:text-red-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`).join('');
+      lucide.createIcons();
+    }
+
+    function renderFlows(flows, clients) {
+      const list = document.getElementById('flows-list');
+      if(!list) return;
+      list.innerHTML = flows.map(f => {
+        const client = clients.find(c => c.__backendId === f.flow_client_id);
+        return `<div class="bg-slate-900 border border-slate-800 rounded-xl p-4 platform-${f.flow_platform}"><div class="flex justify-between items-center"><div><h3 class="font-semibold text-sm">${esc(f.flow_name)}</h3><p class="text-xs text-slate-500">${client ? esc(client.client_name) : 'Sem cliente'} | Gatilho: ${esc(f.flow_trigger)}</p></div><button onclick="deleteFromFirebase('${f.__backendId}')" class="text-slate-600 hover:text-red-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div></div>`;
+      }).join('');
+      lucide.createIcons();
+    }
+
+    function updateSelects(clients) {
+      const opts = '<option value="">Selecione o Cliente...</option>' + clients.map(c => `<option value="${c.__backendId}">${esc(c.client_name)}</option>`).join('');
+      const fSel = document.getElementById('flow-client');
+      const pSel = document.getElementById('preview-client');
+      if(fSel) fSel.innerHTML = opts;
+      if(pSel) pSel.innerHTML = opts;
+    }
+
+    function buildNavigation() {
+        const nav = document.getElementById('main-nav');
+        let html = '';
+        if(userRole === 'admin') {
+            html += `<button onclick="switchTab('clients')" id="tab-clients" class="px-4 py-2 rounded-lg text-sm font-medium">Clientes</button>`;
+            html += `<button onclick="switchTab('flows')" id="tab-flows" class="px-4 py-2 rounded-lg text-sm font-medium">Automações</button>`;
+            html += `<button onclick="switchTab('templates')" id="tab-templates" class="px-4 py-2 rounded-lg text-sm font-medium">Templates</button>`;
+            document.getElementById('admin-stats').classList.remove('hidden');
+        }
+        html += `<button onclick="switchTab('preview')" id="tab-preview" class="px-4 py-2 rounded-lg text-sm font-medium">Testar Bot</button>`;
+        if(userRole === 'admin') html += `<button onclick="switchTab('analytics')" id="tab-analytics" class="px-4 py-2 rounded-lg text-sm font-medium">Relatórios</button>`;
+        nav.innerHTML = html;
+    }
+
+    function switchTab(t) {
+      ['clients', 'flows', 'templates', 'preview', 'analytics'].forEach(v => {
+          const view = document.getElementById(`view-${v}`);
+          const tab = document.getElementById(`tab-${v}`);
+          if(view) view.classList.toggle('hidden', v !== t);
+          if(tab) tab.classList.toggle('tab-active', v === t);
+          if(tab) tab.classList.toggle('text-slate-400', v !== t);
+      });
+    }
+
+    // AUXILIARES
+    const saveToFirebase = (data) => firebase.database().ref('shared_data').push(data);
+    const deleteFromFirebase = (id) => { if(confirm('Excluir permanentemente?')) firebase.database().ref(`shared_data/${id}`).remove(); };
+    function esc(s) { return String(s || '').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+    function showClientForm() { document.getElementById('client-form-container').classList.remove('hidden'); }
+    function hideClientForm() { document.getElementById('client-form-container').classList.add('hidden'); }
+    function showFlowForm() { document.getElementById('flow-form-container').classList.remove('hidden'); }
+    function hideFlowForm() { document.getElementById('flow-form-container').classList.add('hidden'); }
+    async function saveClient(e) { e.preventDefault(); await saveToFirebase({ type: 'client', client_name: document.getElementById('client-name').value, client_platform: document.getElementById('client-platform').value }); e.target.reset(); hideClientForm(); }
+    async function saveFlow(e) { e.preventDefault(); const clientId = document.getElementById('flow-client').value; await saveToFirebase({ type: 'flow', flow_name: document.getElementById('flow-name').value, flow_client_id: clientId, flow_trigger: document.getElementById('flow-trigger').value, flow_response: document.getElementById('flow-response').value, flow_platform: document.getElementById('flow-platform').value }); e.target.reset(); hideFlowForm(); }
+
+    lucide.createIcons();
+  </script>
+ </body>
+</html>
